@@ -82,7 +82,8 @@ async def run_session(io: Any) -> int:
     if not apps:
         # Inline-Fallback, damit es „lebt“
         async def _inline() -> None:
-            await ctx.say("AUI-Core läuft. Keine Plugins gefunden.", wait=True)
+            await ctx.say("A U I Core läuft. Keine Plaggins gefunden.", wait=True)
+            await ctx.say("Beende das Programm. Auf Wiedersehen.", wait=True)
         InlineApp = _make_inline_app(_inline)
         apps = {"inline": lambda: InlineApp()}
 
