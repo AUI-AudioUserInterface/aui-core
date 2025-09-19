@@ -2,26 +2,18 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Run PC-Core (Runner)",
+            "name": "AUI-Core (PC, module)",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/pc_runner.py",
-            "console": "integratedTerminal",
+            "module": "auicore",
+            "cwd": "${workspaceFolder}",
             "justMyCode": true,
             "env": {
-                "LOG_LEVEL": "DEBUG"
+                "AUI_MODE": "pc",
+                "AUI_TTS_LANG": "de",
+                "AUI_TTS_RATE": "170",
+                "AUI_TTS_VOL": "1.0"
             }
-        },
-        {
-            "name": "Run Tests",
-            "type": "python",
-            "request": "launch",
-            "module": "pytest",
-            "args": [
-                "-q",
-                "${workspaceFolder}/tests"
-            ],
-            "console": "integratedTerminal"
         }
     ]
 }
