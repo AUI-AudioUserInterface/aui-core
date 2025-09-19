@@ -1,0 +1,27 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Run PC-Core (Runner)",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/pc_runner.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "env": {
+                "LOG_LEVEL": "DEBUG"
+            }
+        },
+        {
+            "name": "Run Tests",
+            "type": "python",
+            "request": "launch",
+            "module": "pytest",
+            "args": [
+                "-q",
+                "${workspaceFolder}/tests"
+            ],
+            "console": "integratedTerminal"
+        }
+    ]
+}
