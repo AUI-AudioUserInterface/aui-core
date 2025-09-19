@@ -10,27 +10,37 @@ it focuses on audio- and keypad-based dialogs (DTMF, speech, audio playback).
 - Encapsulate **audio output, input, and navigation** in consistent widgets (e.g., `Menu`, `CheckBox`)  
 - Support **DTMF events** (incl. navigation, single/double press)  
 - Enable easy development of **apps/modules** that run on AUI-Core  
-- Modular design: future adapters for Asterisk/ARI, MQTT, external TTS engines  
+- Modular design: adapters for PC simulation and Asterisk ARI  
 
 ## Current Status
 
-- Initial PC-core implementation (Linux/WSL2, macOS, Windows)  
-- Audio output via sound card (`sounddevice`)  
-- DTMF input via keyboard (`readchar`)  
-- Dummy-TTS (to be replaced later by engines like `espeak-ng`, Piper, or Cloud-TTS)  
+- Initial project structure created  
+- Ready for first implementation of the PC simulation line  
 
 ## Project Structure
 
 ```
-aui-core/
-├── auicore/               # Python package
-│   ├── app_context.py     # AppContext (central API for apps)
-│   ├── audio_pc.py        # Audio adapter (sound card)
-│   ├── dtmf_keyboard.py   # Keyboard input (DTMF simulation)
-│   ├── tts_dummy.py       # Dummy-TTS
-│   └── runner_pc.py       # Entry point for PC simulation
-├── tests/                 # pytest tests
-└── .vscode/               # VS Code configuration
+.
+├── auicore/               # Main Python package
+│   ├── api/               # Interfaces and core data types
+│   ├── runtime/           # Generic runtime (navigation, widgets, routing)
+│   ├── services/          # Shared services (e.g. TTS, store, logging)
+│   │   ├── store/         # Key/Value or persistence backends
+│   │   └── tts/           # TTS adapters (dummy, espeak-ng, …)
+│   ├── adapters/          # Environment-specific implementations
+│   │   ├── pc/            # PC simulation (sound card + keyboard DTMF)
+│   │   └── ari/           # Asterisk ARI integration
+│   └── plugins/           # Optional built-in apps/widgets (e.g. Menu DSL)
+├── tests/                 # pytest tests (unit + integration)
+├── .vscode/               # VS Code configuration
+│   ├── launch.json
+│   ├── settings.json
+│   └── tasks.json
+├── CODE_OF_CONDUCT.md     # Community guidelines
+├── CONTRIBUTING.md        # Contribution rules and DCO
+├── .gitignore             # Git ignore rules
+├── LICENSE                # GPLv3 license text
+└── README.md              # Project documentation (this file)
 ```
 
 ## Installation (Development)
@@ -38,20 +48,24 @@ aui-core/
 ```bash
 git clone https://github.com/AUI-AudioUserInterface/aui-core.git
 cd aui-core
-python3.12 -m venv .venv
+python3.11 -m venv .venv
 . .venv/bin/activate
 pip install -e ".[dev]"
 ```
 
-## Usage (PC Simulation)
+## Usage
 
-```bash
-python -m auicore.runner_pc
-```
+Choose the adapter line via environment variable:
 
-- Audio output via the default sound card  
-- DTMF input via keyboard (`0–9`, `*`, `#`)  
-- Navigation extensions (e.g., `**` = Back, `##` = Enter) can be enabled optionally  
+- PC simulation (Linux/WSL2/macOS/Windows):
+  ```bash
+  AUI_MODE=pc python -m auicore
+  ```
+
+- Asterisk ARI (planned):
+  ```bash
+  AUI_MODE=ari python -m auicore
+  ```
 
 ## License
 
@@ -67,6 +81,7 @@ This project uses the following third-party libraries:
 - [numpy](https://numpy.org/) (BSD)  
 - [anyio](https://anyio.readthedocs.io/) (MIT)  
 - [readchar](https://github.com/magmax/python-readchar) (MIT)  
+- [pyttsx3](https://pyttsx3.readthedocs.io/) (MIT)  
 
 All listed libraries are permissively licensed and allow commercial usage.  
 An optional TTS adapter may use `espeak-ng` (GPLv3), which is **not** bundled with AUI-Core,  
