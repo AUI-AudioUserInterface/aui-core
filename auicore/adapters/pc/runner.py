@@ -41,6 +41,7 @@ def main() -> int:
             spoken = dtmf_names.get(k, k)
             print(f"[DTMF] {repr(k)}")
             tts.say(f"Sie haben {spoken} gedrückt.")
+            tts.wait_until_done()
         else:
             # ignore others, but show for visibility
             print(f"[IGN] {repr(k)}")
