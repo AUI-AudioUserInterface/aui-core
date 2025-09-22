@@ -90,20 +90,31 @@ class AppContext:
         return None
 
 
-# -------------------------------
+# -------------------------------1
 # Plugins laden
 # -------------------------------
 
 def load_all_apps(group: str) -> Dict[str, Callable[[], App]]:
     factories: Dict[str, Callable[[], App]] = {}
     try:
-        for ep in entry_points(group=group):
+        from importlib.metadata import entry_points
+        eps = entry_points()
+        try:
+            candidates = eps.select(group=group)  # Python 3.11+
+        except Exception:
+            candidates = entry_points(group=group)  # Fallback für ältere Umgebungen
+
+        names = [ep.name for ep in candidates]
+        print(f"[AUI-Core] Suche Plugins in Gruppe '{group}': gefunden EPs = {names}")
+
+        for ep in candidates:
             try:
                 factories[ep.name] = ep.load()
+                print(f"[AUI-Core] Plugin-Factory geladen: {ep.name} -> {ep.value}")
             except Exception as e:
                 print(f"[AUI-Core] Plugin '{ep.name}' konnte nicht geladen werden: {e}")
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"[AUI-Core] Entry-Point-Suche schlug fehl: {e}")
     return factories
 
 
