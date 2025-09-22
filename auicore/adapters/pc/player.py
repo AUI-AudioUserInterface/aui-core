@@ -1,51 +1,82 @@
 # auicore/adapters/pc/player.py
 from __future__ import annotations
 import asyncio
+import threading
 from typing import Optional
-import numpy as np
-import sounddevice as sd
+
+import simpleaudio as sa  # pip install simpleaudio
 
 from auicore.api.audio_types import PcmAudio
 
 
 class PcPlayerAdapter:
+    """
+    Einfacher PCM-Player für den PC:
+      - spielt s16le/mono PCM via simpleaudio ab
+      - liefert ein korrektes "fertig"-Signal für wait_until_done()
+    """
+
     def __init__(self) -> None:
-        # _play_task ist ein asyncio.Future (Executor-Job) oder None
-        self._play_task: Optional[asyncio.Future] = None
+        self._lock = threading.Lock()
+        self._play_obj: Optional[sa.PlayObject] = None
+        self._done_evt: Optional[asyncio.Event] = None
+        self._loop: Optional[asyncio.AbstractEventLoop] = None
 
     async def play_pcm(self, pcm: PcmAudio) -> None:
-        # laufende Wiedergabe (Barge-In) stoppen
+        """
+        Startet eine neue Wiedergabe. Bricht vorherige ggf. ab.
+        """
+        if self._loop is None:
+            self._loop = asyncio.get_running_loop()
+
+        # evtl. laufende Wiedergabe stoppen
         await self.stop()
 
-        if pcm.channels != 1 or pcm.width != 2:
-            raise ValueError("PcPlayerAdapter erwartet s16le mono")
+        # neues Done-Event
+        self._done_evt = asyncio.Event()
 
-        # Blocking-Playback in Thread ausführen
-        def _play_blocking():
-            arr = np.frombuffer(pcm.data, dtype=np.int16)
-            sd.play(arr, samplerate=pcm.rate, blocking=True)  # blockiert im Worker-Thread
-            sd.stop()
+        # blocking-Worker in Thread
+        def _worker():
+            nonlocal pcm
+            # simpleaudio erwartet: (bytes, num_channels, bytes_per_sample, sample_rate)
+            play_obj = sa.play_buffer(
+                pcm.data,
+                num_channels=max(1, int(pcm.channels)),
+                bytes_per_sample=max(1, int(pcm.width)),
+                sample_rate=max(8000, int(pcm.rate)),
+            )
+            with self._lock:
+                self._play_obj = play_obj
+
+            # blockiert bis Ende oder Stopp
+            play_obj.wait_done()
+
+            # nach Ende: Event setzen (im asyncio-Loop)
+            if self._loop and self._done_evt and not self._done_evt.is_set():
+                self._loop.call_soon_threadsafe(self._done_evt.set)
 
         loop = asyncio.get_running_loop()
-        # Variante A: direkt das Future aus run_in_executor speichern (keine create_task!)
-        self._play_task = loop.run_in_executor(None, _play_blocking)
-
-        # Variante B (Alternative): asyncio.to_thread
-        # self._play_task = asyncio.create_task(asyncio.to_thread(_play_blocking))
+        await loop.run_in_executor(None, _worker)
 
     async def wait_until_done(self) -> None:
-        if self._play_task is not None:
-            try:
-                await self._play_task
-            finally:
-                self._play_task = None
+        """
+        Wartet exakt bis die aktuell laufende Wiedergabe fertig ist.
+        """
+        if self._done_evt is None:
+            return
+        await self._done_evt.wait()
 
     async def stop(self) -> None:
-        """Sofort stoppen (Barge-In): Audio stoppen und auf Worker warten."""
-        if self._play_task is not None:
-            # Stoppt die PortAudio-Wiedergabe sofort
-            sd.stop()
+        """
+        Stoppt laufende Wiedergabe (falls vorhanden) und setzt das Done-Event.
+        """
+        with self._lock:
+            po = self._play_obj
+            self._play_obj = None
+        if po is not None:
             try:
-                await self._play_task
-            finally:
-                self._play_task = None
+                po.stop()
+            except Exception:
+                pass
+        if self._done_evt and not self._done_evt.is_set():
+            self._done_evt.set()
