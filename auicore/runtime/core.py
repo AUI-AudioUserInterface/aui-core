@@ -1,31 +1,45 @@
+# auicore/runtime/core.py
 """
-Transport-agnostic runtime core for AUI-Core.
+Transport-agnostischer Runtime-Core für AUI-Core.
 
-- bekommt ein IO-Objekt vom Adapter (PC/ARI)
-- baut den AppContext
-- lädt Plugins (Entry-Points)
-- wählt und startet die App
+- Erhält ein IO-Objekt vom gewählten Adapter (PC/ARI).
+- Baut den AppContext.
+- Lädt Plugins (Entry-Points) oder verwendet eine Inline-Fallback-App.
+- Startet/stoppt die App.
 """
+
 from __future__ import annotations
-import os, asyncio
+
+import asyncio
+import os
 from importlib.metadata import entry_points
 from typing import Any, Optional, Protocol, Callable, Dict
 
-# ---- minimale IO-Protokolle ----
+
+# -------------------------------
+# IO-Protokolle / Typen
+# -------------------------------
+
 class TtsAdapter(Protocol):
-    async def say(self, text: str) -> None: ...
-    async def wait_until_done(self, timeout: Optional[float] = None) -> bool: ...
+    async def synth(self, text: str): ...  # gibt PcmAudio zurück
+
 
 class PlayerAdapter(Protocol):
     async def play_file(self, path: str) -> None: ...
     async def stop(self) -> None: ...
+    # Wichtig für die neue Pipeline:
+    async def play_pcm(self, pcm) -> None: ...
+    async def wait_until_done(self) -> None: ...
+
 
 class RecorderAdapter(Protocol):
     async def record(self, max_seconds: int) -> bytes: ...
 
+
 class DtmfAdapter(Protocol):
     async def get_digit(self, timeout: Optional[float] = None) -> Optional[str]: ...
     def pushback(self, d: str) -> None: ...
+
 
 class ContextIO(Protocol):
     tts: TtsAdapter
@@ -33,21 +47,28 @@ class ContextIO(Protocol):
     recorder: RecorderAdapter
     dtmf: DtmfAdapter
 
-# ---- App-Schnittstelle ----
+
 class App(Protocol):
     def init(self, ctx: "AppContext") -> None: ...
     async def start(self) -> None: ...
     async def stop(self) -> None: ...
 
-# ---- AppContext (vereinheitlichte API) ----
+
+# -------------------------------
+# AppContext (vereinheitlichte API)
+# -------------------------------
+
 class AppContext:
     def __init__(self, io: ContextIO) -> None:
         self.io = io
 
+    # --- Ausgabe ---
     async def say(self, text: str, wait: bool = False) -> None:
-        await self.io.tts.say(text)
-        if wait:
-            await self.io.tts.wait_until_done()
+        """Text -> PCM rendern -> abspielen; optional warten bis fertig."""
+        pcm = await self.io.tts.synth(text)
+        await self.io.player.play_pcm(pcm)
+        if wait and hasattr(self.io.player, "wait_until_done"):
+            await self.io.player.wait_until_done()
 
     async def play_file(self, path: str) -> None:
         await self.io.player.play_file(path)
@@ -55,10 +76,24 @@ class AppContext:
     async def stop_audio(self) -> None:
         await self.io.player.stop()
 
+    # --- Eingabe ---
     async def get_digit(self, timeout: Optional[float] = None) -> Optional[str]:
         return await self.io.dtmf.get_digit(timeout)
 
-# ---- Plugins laden ----
+    async def confirm(self, prompt: str, timeout: float = 10.0) -> Optional[bool]:
+        await self.say(prompt)
+        d = await self.get_digit(timeout)
+        if d == "1":
+            return True
+        if d == "2":
+            return False
+        return None
+
+
+# -------------------------------
+# Plugins laden
+# -------------------------------
+
 def load_all_apps(group: str) -> Dict[str, Callable[[], App]]:
     factories: Dict[str, Callable[[], App]] = {}
     try:
@@ -71,24 +106,30 @@ def load_all_apps(group: str) -> Dict[str, Callable[[], App]]:
         pass
     return factories
 
-# ---- Core-Entry ----
-async def run_session(io: Any) -> int:
-    _require_io(io)
 
+# -------------------------------
+# Core-Einstieg
+# -------------------------------
+
+async def run_session(io: Any) -> int:
+    """
+    Erwartet ein IO-Objekt mit tts/player/dtmf/recorder.
+    """
+    _require_io(io)
     ctx = AppContext(io)
+
     group = os.getenv("AUI_ENTRYPOINT_GROUP", "ivrapp.plugins")
     apps = load_all_apps(group)
 
     if not apps:
-        # Inline-Fallback, damit es „lebt“
+        # Inline-Fallback, damit etwas hörbar ist
         async def _inline() -> None:
-            await ctx.say("A U I Core läuft. Keine Plaggins gefunden.", wait=True)
-            await ctx.say("Beende das Programm. Auf Wiedersehen.", wait=True)
+            await ctx.say("A-U-I   Kohr läuft. Keine Plaggins gefunden.", wait=True)
         InlineApp = _make_inline_app(_inline)
         apps = {"inline": lambda: InlineApp()}
 
-    name = os.getenv("AUI_APP")
-    factory = apps.get(name) if name else (apps.get("menu") or next(iter(apps.values())))
+    app_name = os.getenv("AUI_APP")
+    factory = apps.get(app_name) if app_name else (apps.get("menu") or next(iter(apps.values())))
     app = factory()
 
     try:
@@ -99,13 +140,21 @@ async def run_session(io: Any) -> int:
             await app.stop()
         except Exception:
             pass
+
     return 0
 
-# ---- Helpers ----
+
+# -------------------------------
+# Helpers
+# -------------------------------
+
 def _require_io(io: Any) -> None:
     for attr in ("tts", "player", "dtmf", "recorder"):
         if not hasattr(io, attr) or getattr(io, attr) is None:
             raise RuntimeError(f"Adapter IO is missing '{attr}'")
+    # Zusätzliche Prüfung: Player sollte play_pcm haben
+    if not hasattr(io.player, "play_pcm"):
+        raise RuntimeError("PlayerAdapter fehlt 'play_pcm(pcm)'")
 
 def _make_inline_app(async_fn: Callable[[], "asyncio.Future[Any]"]) -> type:
     class _InlineApp:
