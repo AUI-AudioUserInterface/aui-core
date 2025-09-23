@@ -19,7 +19,7 @@ def _log(msg: str) -> None:
 
 
 # Standard-Ziel im Repo (kann via AUI_PIPER_MODEL übersteuert werden)
-DEFAULT_PIPER_MODEL = "./auicore/models/piper/de/de_DE-thorsten-high.onnx"
+DEFAULT_PIPER_MODEL = "./auicore/models/piper/de/de_DE-thorsten-medium.onnx"
 
 # Kandidaten-URLs (wir probieren sie der Reihe nach)
 # Falls du andere Mirrors hast, AUI_PIPER_URL_BASE setzen.
@@ -146,6 +146,16 @@ class PiperTTS:
                     paths.insert(0, "https://huggingface.co/Thorsten-Voice/Piper/resolve/main/de_DE-thorsten-high.onnx")
                 else:
                     paths.insert(0, "https://huggingface.co/Thorsten-Voice/Piper/resolve/main/de_DE-thorsten-high.onnx.json")
+            if "thorsten-low" in name:
+                if ext == "":
+                    paths.insert(0, "https://huggingface.co/Thorsten-Voice/Piper/resolve/main/de_DE-thorsten-low.onnx")
+                else:
+                    paths.insert(0, "https://huggingface.co/Thorsten-Voice/Piper/resolve/main/de_DE-thorsten-low.onnx.json")
+            if "thorsten-medium" in name:
+                if ext == "":
+                    paths.insert(0, "https://huggingface.co/Thorsten-Voice/Piper/resolve/main/de_DE-thorsten-medium.onnx")
+                else:
+                    paths.insert(0, "https://huggingface.co/Thorsten-Voice/Piper/resolve/main/de_DE-thorsten-medium.onnx.json")
             return paths
 
         ok_onnx = True
