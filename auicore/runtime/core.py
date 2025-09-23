@@ -65,6 +65,13 @@ class AppContext:
     # --- Ausgabe ---
     async def say(self, text: str, wait: bool = False) -> None:
         """Text -> PCM rendern -> abspielen; optional warten bis fertig."""
+        print(f"[AUI-Core] Say: {text}")
+
+        # Sonderzeichen für Sprach ersetzen
+        text = (
+            text.replace('*', ' Stern ')
+                .replace('#', ' Raute ')
+        )
         pcm = await self.io.tts.synth(text)
         await self.io.player.play_pcm(pcm)
         if wait and hasattr(self.io.player, "wait_until_done"):
