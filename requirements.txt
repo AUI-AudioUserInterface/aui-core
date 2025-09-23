@@ -1,0 +1,6 @@
+# Core dependencies
+numpy
+simpleaudio
+TTS
+piper-tts
+ari
