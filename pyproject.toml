@@ -1,25 +1,31 @@
 [build-system]
-requires = ["setuptools>=69", "wheel"]
+requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "aui-core"
-version = "0.2.0"
-description = "AUI core runtime: OO AppContext, service container, plugin discovery for TTS and adapters"
+version = "0.1.0"
+description = "AUI Core runtime: OO runtime, adapter interfaces, TTS facade, prompts"
 readme = "README.md"
 requires-python = ">=3.11"
-license = { text = "GPL-3.0-only" }
-authors = [{ name = "AUI AudioUserInterface" }]
+license = { text = "GPL-3.0-or-later" }
+authors = [{ name = "AUI Project" }]
 classifiers = [
-  "Programming Language :: Python :: 3",
-  "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
-  "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Libraries",
+]
+dependencies = [
+    "aui-common>=0.1.0",  # placeholder: your local editable install provides this
 ]
 
-dependencies = ["aui-common>=0.1.0"]
-
 [project.urls]
-Homepage = "https://github.com/AUI-AudioUserInterface/aui-core"
+Homepage = "https://example.com/aui"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+"auicore" = ["py.typed"]

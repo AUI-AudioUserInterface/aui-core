@@ -1,25 +1,27 @@
-import asyncio
-from auicore.runtime.core import Services, CoreAppContext
-from aui_common.audio.types import PcmAudio
+import time
+from auicore.runtime.core import App, AppContext
+
+class DummyAdapter:
+    def __init__(self, ctx): self.ctx = ctx
+    def speak(self, text: str) -> None: pass
+    def stop_speak(self) -> None: pass
+    def play(self, uri: str) -> None: pass
+    def stop_play(self) -> None: pass
+    def ring(self) -> None: pass
+    def hangup(self) -> None: pass
+    def push_digit(self, digit: str) -> None: self.ctx.digit_buffer.push_digit(digit)
 
 class DummyTTS:
-    async def preload(self): pass
-    async def synth(self, text: str, cancel=None) -> PcmAudio:
-        return PcmAudio(data=b"\x00\x00"*100, rate=22050)
+    def say(self, text: str) -> None: pass
+    def stop(self) -> None: pass
 
-class DummyAudioSink:
-    async def play(self, audio: PcmAudio, wait: bool=False, cancel=None) -> None: return
-    async def stop(self) -> None: return
-    def is_busy(self)->bool: return False
-
-class DummyInput:
-    async def dtmf_events(self):
-        if False:
-            yield None
-    async def wait_for_digit(self, timeout=None):
-        return None
-
-def test_context_say():
-    s = Services(tts=DummyTTS(), audio=DummyAudioSink(), inputp=DummyInput())
-    ctx = CoreAppContext(s)
-    asyncio.get_event_loop().run_until_complete(ctx.say("Hallo", wait=True))
+def test_say_and_get_digit_basic():
+    ctx = AppContext()
+    app = App(ctx)
+    app.bind_adapter(DummyAdapter(ctx))
+    app.bind_tts(DummyTTS())
+    app.start()
+    # Simulate incoming digit after prompt
+    ctx.digit_buffer.push_digit("5")
+    d = auicore.runtime.core.say_and_get_digit(ctx, "Enter digit:")
+    assert d == "5"
