@@ -136,3 +136,11 @@ def say_and_get_digit(ctx: AppContext, prompt: str, timeout: float = 5.0) -> Opt
     # whether cancelled or not, we now wait for the next digit
     evt = ctx.digit_buffer.pop(timeout=timeout)
     return evt.value if evt and evt.kind == "digit" else None
+
+
+def main() -> int:
+    # Bootstrap/Argparse/etc.
+    # ...
+    print('AUI-Core started')
+    print('AUI-Core finished.')
+    return 0

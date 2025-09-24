@@ -1,5 +1,3 @@
-# auicore/__main__.py
-from . import runner  # oder was dein Einstiegspunkt sein soll
-
+from .runtime.core import main
 if __name__ == "__main__":
-    runner.main()
+    raise SystemExit(main())

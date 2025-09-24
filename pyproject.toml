@@ -29,3 +29,6 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 "auicore" = ["py.typed"]
+
+[project.scripts]
+auicore = "auicore.runtime.core:main"
