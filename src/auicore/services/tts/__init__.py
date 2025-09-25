@@ -1,3 +1,2 @@
-from .base import TtsService
-from .factory import make_tts
-__all__=['TtsService','make_tts']
+from .manager import TtsManager
+__all__ = ["TtsManager"]
