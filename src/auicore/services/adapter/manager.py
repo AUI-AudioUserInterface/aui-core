@@ -49,7 +49,10 @@ class AdapterManager:
             inst = self._reg.make(name)
             if init_kwargs:
                 await inst.init(**init_kwargs)
-            await inst.start()
+            try:
+                await inst.start()
+            except Exception as e:
+                print (f"Adapter konnte nicht gestartet werden: {e}")
             self._current, self._current_name = inst, name
             log.info("Adapter aktiv: %s", name)
 
