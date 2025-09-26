@@ -47,8 +47,12 @@ class AdapterManager:
                     log.exception("Stop des bisherigen Adapters schlug fehl")
             # neuen bauen + initialisieren + starten
             inst = self._reg.make(name)
+
             if init_kwargs:
                 await inst.init(**init_kwargs)
+            else:
+                await inst.init()
+
             try:
                 await inst.start()
             except Exception as e:
